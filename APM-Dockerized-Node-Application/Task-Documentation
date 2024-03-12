@@ -1,0 +1,148 @@
+
+1. Login on New Relic.
+2. Navigate to "APM & Services" ,click on "Add Data".
+3. Click on "Node", navigate to "Application monitoring", click on "Node.js".
+4. Under "Choose your instrumentation method", click on "Docker".
+5. Under "Name your application", type a name of your choice e.g "Dump-node".
+6. Now create a package.json file using the following command:
+  
+   "npm init"        OR        " npm install newrelic "
+
+7. Then Add 'newrelic' as a dependency to your package.json file:
+          "newrelic": "latest"   
+ 
+Note: Below is the "package.json" file:
+
+{
+  "name": "Dump-node",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js" 
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "newrelic": "latest"
+  }
+}
+
+8. Then create an application file named "app.js" or something similar like "index.js etc etc".
+9. Then in the first line of your app's main module, add:
+ 
+ require('newrelic');
+ 
+NOTE: Below is the "app.js" file:
+
+const express = require('express');
+const app = express();
+const port = 3000;
+
+// New Relic initialization
+require('newrelic');
+
+// Define routes or middleware as needed
+// Example:
+app.get('/', (req, res) => {
+  res.send('Hello World!');
+});
+
+// Start the server
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
+
+10. Now Create a "Dockerfile" and add these lines in the "Dockerfile":
+
+ ENV NEW_RELIC_NO_CONFIG_FILE=true
+ ENV NEW_RELIC_DISTRIBUTED_TRACING_ENABLED=true \
+ NEW_RELIC_LOG=stdout
+ # etc.
+
+NOTE: Below is the "Dockerfile".
+
+FROM node:latest
+
+# Set the working directory
+WORKDIR /usr/src/app
+
+# Copy package.json and package-lock.json
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Bundle app source
+COPY . .
+
+# Add New Relic configuration
+ENV NEW_RELIC_NO_CONFIG_FILE=true \
+    NEW_RELIC_DISTRIBUTED_TRACING_ENABLED=true \
+    NEW_RELIC_LOG=stdout
+
+# Install express module
+RUN npm install express
+
+# Expose the port
+EXPOSE 3000
+
+# Command to run the application
+CMD [ "npm", "start" ]
+
+11. Now Create a configuration file for new relic named as "newrelic.js"
+12. Add the following contents in it:
+
+'use strict';
+
+exports.config = {
+  app_name: ['Dump-node'], // Set your application name
+  license_key: 'eu01xx6705864f2c66b27e3e664156c5FFFFNRAL', // Set your New Relic license key
+  logging: {
+    level: 'info', // Set the logging level
+    filepath: 'stdout' // Set the log file path
+  },
+  distributed_tracing: {
+    enabled: true
+  },
+  // Add additional configuration options as needed
+};
+
+
+NOTE: The license key will be given on New Relic's commands which are given on their website during 
+"Instrument your container" process.
+
+13. Now run the given command on terminal as "docker build -t your_image_name:latest ." as:
+
+ docker build -t node-js-app:latest .
+
+14. Also run the given command "docker run -e NEW_RELIC_LICENSE_KEY=eu01xx6705864f2c66b27e3e664156c5FFFFNRAL \
+  -e NEW_RELIC_APP_NAME="SS" \
+  your_image_name:latest
+" as follows:
+
+docker run -e NEW_RELIC_LICENSE_KEY=eu01xx6705864f2c66b27e3e664156c5FFFFNRAL   -e NEW_RELIC_APP_NAME="Dump-node"   node-js-app:latest
+
+15. Now click on "Continue", on New Relic's website.
+16. Now click on "Test connection".
+17. Then click on "See Your Data"
+18. Now open a new tab on your browser and at the URL section remove everything and type "localhost:3000"
+
+NOTE: If you face any issue, then type the following command on the terminal as:
+
+" sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' <Name Of Your Container-ID>
+
+Example: sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' f3575ccf3ffd               "
+
+NOTE: The above command will tell you the ip address of your container on which it is automatically assigned.
+
+19. Now write the ip address of your container on which it is automatically assigned, on the browser as "172.17.0.2:3000".
+20. Then give hits to your website (or application), by refreshing the browser page multiple times which contained your ip address e.g "172.17.0.2:3000". By this
+method you will be able to see data (transactions) of your application which contains your ip address "172.17.0.2:3000". Also don't forget to refresh the page of New Relic webpage
+or "APM & Services" page, to see the updated results of transactions (or hits).
+
+NOTE: This ip address issue occurs because everytime you run a container on same port, the container itself assigns a new ip address, if the previous container was assigned 
+to the original ip address or initial ip addresses of your system.
+
+
+
